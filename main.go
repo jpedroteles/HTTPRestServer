@@ -36,10 +36,10 @@ var(
 
 //Book type definitions
 type Book struct {
-	ISBN      int    `json:"isbn"`
-	Title  	  string `json:"title"`
-	Author 	  string `json:"author"`
-	Owner string `json:"owner"`
+	ISBN   int    `json:"isbn"`
+	Title  string `json:"title"`
+	Author string `json:"author"`
+	Owner  string `json:"owner"`
 }
 
 //kvStore type definition. Mutex for lock/unlock when making operations on object
@@ -53,11 +53,11 @@ type storeHandler struct {
 	store *kvStore
 }
 
-type listInfo struct{
-	key string `json:"key"`
-	owner string `json:"owner"`
+type ListInfo struct {
+	Key  string `json:"key"`
+	Owner  string `json:"owner"`
 }
-
+/*
 // NewBook constructor
 func NewBook(isbn int, title string, author string) *Book{
 	Book:= Book{ISBN:isbn, Title: title, Author: author}
@@ -69,6 +69,7 @@ func (b *Book) String() string {
 	return fmt.Sprintf("Book(%d, %s by %s)", b.ISBN, b.Title,
 		b.Author)
 }
+*/
 
 func SetUpData() *storeHandler {
 	book := &storeHandler{
@@ -165,18 +166,21 @@ func (s storeHandler) ServeHTTP(writer http.ResponseWriter, request *http.Reques
 
 // List TODO check problem with converting object to json
 //List list all books or given a isbn in path only the one that matches
+// Not sure if this method really need auth
 func (s storeHandler) List(writer http.ResponseWriter, request *http.Request, auth string) {
 	key := strings.TrimPrefix(request.URL.Path,ListPath)
 	key = strings.TrimLeft(key,"/")
 	if key ==""{
 		//list all books
 		s.store.RLock()
-		books := make([]listInfo, 0, len(s.store.books))
+		books := make([]ListInfo, 0, len(s.store.books))
 		for _, v := range s.store.books {
-			books = append(books, listInfo{
-				strconv.Itoa(v.ISBN),
-				v.Owner,
-			})
+			//if v.Owner == auth || auth == Admin{
+				books = append(books, ListInfo{
+					strconv.Itoa(v.ISBN),
+					v.Owner,
+				})
+			//}
 		}
 		s.store.RUnlock()
 		jsonBytes, err := json.Marshal(books)
@@ -196,8 +200,8 @@ func (s storeHandler) List(writer http.ResponseWriter, request *http.Request, au
 			http.Error(writer, msg, http.StatusNotFound)
 			return
 		}
-		if book.Owner == auth || auth == Admin{
-			bookList := listInfo{
+		//if book.Owner == auth || auth == Admin{
+			bookList := ListInfo{
 				strconv.Itoa(book.ISBN),
 				book.Owner,
 			}
@@ -209,10 +213,10 @@ func (s storeHandler) List(writer http.ResponseWriter, request *http.Request, au
 				writer.WriteHeader(http.StatusOK)
 				writer.Write([]byte(jsonData))
 			}
-		}else{
+		/*}else{
 			writer.WriteHeader(http.StatusForbidden)
 			writer.Write([]byte("Forbidden"))
-		}
+		}*/
 	}
 }
 
