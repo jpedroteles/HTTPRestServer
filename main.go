@@ -251,19 +251,40 @@ func (s storeHandler) Delete(writer http.ResponseWriter, request *http.Request) 
 		writer.Write([]byte("Ok"))
 }
 
+//CreateOrUpdate creates entry if isbn doesn't already exist, if exists then updates entry
 func (s storeHandler) CreateOrUpdate(writer http.ResponseWriter, request *http.Request) {
 	var b Book
 	if err := json.NewDecoder(request.Body).Decode(&b); err != nil {
 		internalServerError(writer, request)
 		return
 	}
+	s.store.RLock()
+	_, ok := s.store.books[string(b.ISBN)]
+	s.store.RUnlock()
+	//ISBN doesn't exist so we create a new entry
+	if !ok{
+		//Creation part
+		s.store.Lock()
+		s.store.books[strconv.Itoa(b.ISBN)] = b
+		s.store.Unlock()
+		writer.WriteHeader(http.StatusOK)
+		writer.Write([]byte("Ok"))
+	}else{
+		//Isbn exists, so we update instead of creating a new one
+		s.store.Lock()
+		updateModel := Book{
+			b.ISBN,
+			b.Title,
+			b.Author,
+			b.Owner,
+		}
+		s.store.books[string(b.ISBN)] = updateModel
+		s.store.Unlock()
+		writer.WriteHeader(http.StatusOK)
+		writer.Write([]byte("Ok"))
+	}
 
-	//Creation part
-	s.store.Lock()
-	s.store.books[strconv.Itoa(b.ISBN)] = b
-	s.store.Unlock()
-	writer.WriteHeader(http.StatusOK)
-	writer.Write([]byte("Ok"))
+
 }
 
 func internalServerError(writer http.ResponseWriter, request *http.Request) {
