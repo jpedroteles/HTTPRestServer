@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 	"utils"
 )
 const (
@@ -18,6 +19,7 @@ const (
 	StorePath = "/store/"
 	ListPath  ="/list"
 	pingPath  = "/ping"
+	Admin = "admin"
 )
 
 var(
@@ -73,14 +75,13 @@ func SetUpData() *storeHandler {
 		store : &kvStore{
 			books:map[string]Book{
 				"1":{1,"Get Set Go!", "John Smith", "Test"},
-				"2":{2,"Be a Go Getter", "John Smith", "David Byrne"},
+				"2":{2,"Be a Go Getter", "David Byrne", "David"},
 			},
 			RWMutex: &sync.RWMutex{},
 		},
 	}
 	return book
 }
-
 
 func main(){
 	var(
@@ -132,25 +133,29 @@ func SetUpServer() *http.ServeMux {
 	return mux
 }
 
-func Ping(w http.ResponseWriter, r *http.Request){
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("pong"))
+func Ping(writer http.ResponseWriter, request *http.Request){
+	utils.HTTPInfoLogger.Println(fmt.Sprintf("Date: %s,IP source: %s,HTTP method: %s,URL: %s", time.Now().Format("2006.01.02 15:04:05"),request.Header.Get("X-FORWARDED-FOR"),request.Method,request.URL))
+
+	writer.WriteHeader(http.StatusOK)
+	writer.Write([]byte("pong"))
 }
 
 func (s storeHandler) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
 	writer.Header().Set("content-type", "application/json")
+	utils.HTTPInfoLogger.Println(fmt.Sprintf("Date: %s,IP source: %s,HTTP method: %s,URL: %s", time.Now().Format("2006.01.02 15:04:05"),request.Header.Get("X-FORWARDED-FOR"),request.Method,request.URL))
+	auth:=request.Header.Get("Authorization")
 	switch {
 	case request.Method == http.MethodGet && listBookRe.MatchString(request.URL.Path) || listBooksRe.MatchString(request.URL.Path):
-		s.List(writer, request)
+		s.List(writer, request, auth)
 		return
 	case request.Method == http.MethodGet && StoreRe.MatchString(request.URL.Path):
-		s.Get(writer, request)
+		s.Get(writer, request, auth)
 		return
 	case request.Method == http.MethodPut && CreateBookRe.MatchString(request.URL.Path):
-		s.CreateOrUpdate(writer, request)
+		s.CreateOrUpdate(writer, request, auth)
 		return
 	case request.Method == http.MethodDelete && StoreRe.MatchString(request.URL.Path):
-		s.Delete(writer, request)
+		s.Delete(writer, request, auth)
 		return
 	default:
 		notFound(writer, request)
@@ -159,15 +164,14 @@ func (s storeHandler) ServeHTTP(writer http.ResponseWriter, request *http.Reques
 }
 
 // List TODO check problem with converting object to json
-//List list all books or given a isbn in path only the one that matchs
-func (s storeHandler) List(writer http.ResponseWriter, request *http.Request) {
+//List list all books or given a isbn in path only the one that matches
+func (s storeHandler) List(writer http.ResponseWriter, request *http.Request, auth string) {
 	key := strings.TrimPrefix(request.URL.Path,ListPath)
 	key = strings.TrimLeft(key,"/")
 	if key ==""{
 		//list all books
 		s.store.RLock()
 		books := make([]listInfo, 0, len(s.store.books))
-		utils.AppWarningLogger.Println(s.store.books)
 		for _, v := range s.store.books {
 			books = append(books, listInfo{
 				strconv.Itoa(v.ISBN),
@@ -192,23 +196,28 @@ func (s storeHandler) List(writer http.ResponseWriter, request *http.Request) {
 			http.Error(writer, msg, http.StatusNotFound)
 			return
 		}
-		bookList := listInfo{
-			strconv.Itoa(book.ISBN),
-			book.Owner,
-		}
-		jsonData, err := json.Marshal(bookList)
-		if err != nil {
-			internalServerError(writer, request)
-			return
-		} else {
-			writer.WriteHeader(http.StatusOK)
-			writer.Write([]byte(jsonData))
+		if book.Owner == auth || auth == Admin{
+			bookList := listInfo{
+				strconv.Itoa(book.ISBN),
+				book.Owner,
+			}
+			jsonData, err := json.Marshal(bookList)
+			if err != nil {
+				internalServerError(writer, request)
+				return
+			} else {
+				writer.WriteHeader(http.StatusOK)
+				writer.Write([]byte(jsonData))
+			}
+		}else{
+			writer.WriteHeader(http.StatusForbidden)
+			writer.Write([]byte("Forbidden"))
 		}
 	}
 }
 
 //Get given an isbn in path look for it and return full object
-func (s storeHandler) Get(writer http.ResponseWriter, request *http.Request) {
+func (s storeHandler) Get(writer http.ResponseWriter, request *http.Request, auth string) {
 	key := strings.TrimPrefix(request.URL.Path,StorePath)
 	key = strings.TrimLeft(key,"/")
 	s.store.RLock()
@@ -220,22 +229,28 @@ func (s storeHandler) Get(writer http.ResponseWriter, request *http.Request) {
 		http.Error(writer, msg, http.StatusNotFound)
 		return
 	}
-	jsonData, err := json.Marshal(book)
-	if err != nil {
-		internalServerError(writer, request)
-		return
-	} else {
-		writer.WriteHeader(http.StatusOK)
-		writer.Write([]byte(jsonData))
+	if book.Owner==auth {
+		jsonData, err := json.Marshal(book)
+		if err != nil {
+			internalServerError(writer, request)
+			return
+		} else {
+			writer.WriteHeader(http.StatusOK)
+			writer.Write([]byte(jsonData))
+		}
+	}else{
+		writer.WriteHeader(http.StatusForbidden)
+		writer.Write([]byte("Forbidden"))
 	}
+
 }
 
 //Delete given an isbn in path looks for it and if exists deletes it
-func (s storeHandler) Delete(writer http.ResponseWriter, request *http.Request) {
+func (s storeHandler) Delete(writer http.ResponseWriter, request *http.Request, auth string) {
 	key := strings.TrimPrefix(request.URL.Path,StorePath)
 	key = strings.TrimLeft(key,"/")
 	s.store.RLock()
-	_, ok := s.store.books[key]
+	book, ok := s.store.books[key]
 	s.store.RUnlock()
 	if !ok{
 		utils.AppErrorLogger.Println("Book not found")
@@ -243,16 +258,22 @@ func (s storeHandler) Delete(writer http.ResponseWriter, request *http.Request) 
 		http.Error(writer, msg, http.StatusNotFound)
 		return
 	}
-	s.store.Lock()
-	//Remove key
-	delete(s.store.books, key)
-	s.store.Unlock()
+	if book.Owner == auth || auth == Admin {
+		s.store.Lock()
+		//Remove key
+		delete(s.store.books, key)
+		s.store.Unlock()
 		writer.WriteHeader(http.StatusOK)
 		writer.Write([]byte("Ok"))
+	}else{
+		writer.WriteHeader(http.StatusForbidden)
+		writer.Write([]byte("Forbidden"))
+	}
+
 }
 
 //CreateOrUpdate creates entry if isbn doesn't already exist, if exists then updates entry
-func (s storeHandler) CreateOrUpdate(writer http.ResponseWriter, request *http.Request) {
+func (s storeHandler) CreateOrUpdate(writer http.ResponseWriter, request *http.Request, auth string) {
 	var b Book
 	if err := json.NewDecoder(request.Body).Decode(&b); err != nil {
 		internalServerError(writer, request)
@@ -271,17 +292,23 @@ func (s storeHandler) CreateOrUpdate(writer http.ResponseWriter, request *http.R
 		writer.Write([]byte("Ok"))
 	}else{
 		//Isbn exists, so we update instead of creating a new one
-		s.store.Lock()
-		updateModel := Book{
-			b.ISBN,
-			b.Title,
-			b.Author,
-			b.Owner,
+		if b.Owner == auth || auth == Admin{
+			s.store.Lock()
+			updateModel := Book{
+				b.ISBN,
+				b.Title,
+				b.Author,
+				b.Owner,
+			}
+			s.store.books[string(b.ISBN)] = updateModel
+			s.store.Unlock()
+			writer.WriteHeader(http.StatusOK)
+			writer.Write([]byte("Ok"))
+		}else{
+			writer.WriteHeader(http.StatusForbidden)
+			writer.Write([]byte("Forbidden"))
 		}
-		s.store.books[string(b.ISBN)] = updateModel
-		s.store.Unlock()
-		writer.WriteHeader(http.StatusOK)
-		writer.Write([]byte("Ok"))
+
 	}
 
 

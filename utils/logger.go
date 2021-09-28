@@ -27,7 +27,6 @@ func SetUpLogger(){
 	if err != nil{
 		log.Fatal(err)
 	}
-
 	AppInfoLogger = log.New(appLog, "INFO: ", log.Ldate|log.Ltime|log.Lshortfile)
 	AppWarningLogger = log.New(appLog, "WARNING: ", log.Ldate|log.Ltime|log.Lshortfile)
 	AppErrorLogger = log.New(appLog, "ERROR: ", log.Ldate|log.Ltime|log.Lshortfile)
@@ -36,7 +35,6 @@ func SetUpLogger(){
 	if err != nil{
 		log.Fatal(err)
 	}
-
 	HTTPInfoLogger = log.New(htaccessLog, "INFO: ", log.Ldate|log.Ltime|log.Lshortfile)
 	HTTPWarningLogger = log.New(htaccessLog, "WARNING: ", log.Ldate|log.Ltime|log.Lshortfile)
 	HTTPErrorLogger = log.New(htaccessLog, "ERROR: ", log.Ldate|log.Ltime|log.Lshortfile)
