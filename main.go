@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"regexp"
+	//"server"
 	"strconv"
 	"strings"
 	"sync"
@@ -16,10 +17,11 @@ import (
 const (
 
 	//Root     = "/api/"
-	StorePath = "/store/"
-	ListPath  ="/list"
-	pingPath  = "/ping"
-	Admin = "admin"
+	StorePath    = "/store/"
+	ListPath     ="/list"
+	PingPath     = "/ping"
+	ShutdownPath = "/shutdown"
+	Admin        = "admin"
 )
 
 var(
@@ -40,6 +42,9 @@ type Book struct {
 	Title  string `json:"title"`
 	Author string `json:"author"`
 	Owner  string `json:"owner"`
+	Writes int
+	Reads  int
+	Age    string
 }
 
 //kvStore type definition. Mutex for lock/unlock when making operations on object
@@ -54,8 +59,11 @@ type storeHandler struct {
 }
 
 type ListInfo struct {
-	Key  string `json:"key"`
+	Key    string `json:"key"`
 	Owner  string `json:"owner"`
+	Writes int    `json:"writes"`
+	Reads  int    `json:"reads"`
+	Age    int64  `json:"age"`
 }
 /*
 // NewBook constructor
@@ -70,13 +78,18 @@ func (b *Book) String() string {
 		b.Author)
 }
 */
+func AgeMilli(age string) int64 {
+	ageTime, _ :=time.Parse("2006-01-02T15:04:05.000Z",age)
+	test := ageTime.Sub(time.Now())
+	return test.Milliseconds()
+}
 
 func SetUpData() *storeHandler {
 	book := &storeHandler{
 		store : &kvStore{
 			books:map[string]Book{
-				"1":{1,"Get Set Go!", "John Smith", "Test"},
-				"2":{2,"Be a Go Getter", "David Byrne", "David"},
+				"1":{1,"Get Set Go!", "John Smith", "Test", 0, 0, time.Now().String()},
+				"2":{2,"Be a Go Getter", "David Byrne", "David",0,0,time.Now().String()},
 			},
 			RWMutex: &sync.RWMutex{},
 		},
@@ -88,6 +101,7 @@ func main(){
 	var(
 		port int
 	)
+
 	//Handling arguments
 	flag.IntVar(&port, "port", 8000, "port to listen on")
 
@@ -125,13 +139,32 @@ func main(){
 func SetUpServer() *http.ServeMux {
 	mux := http.NewServeMux()
 	data := SetUpData()
-	mux.HandleFunc(pingPath,Ping)
+	mux.HandleFunc(PingPath,Ping)
+	mux.HandleFunc(ShutdownPath, Shutdown)
 	mux.Handle(StorePath,data)
 	mux.Handle(strings.TrimRight(StorePath,"/"),data)
 	mux.Handle(ListPath,data)
 	mux.Handle(ListPath +"/", data)
 	//mux.Handle("",data)
 	return mux
+}
+
+func Shutdown(writer http.ResponseWriter, request *http.Request) {
+	utils.HTTPInfoLogger.Println(fmt.Sprintf("Date: %s,IP source: %s,HTTP method: %s,URL: %s", time.Now().Format("2006.01.02 15:04:05"),request.Header.Get("X-FORWARDED-FOR"),request.Method,request.URL))
+	auth := request.Header.Get("Authorization")
+	if auth == Admin{
+		writer.WriteHeader(http.StatusOK)
+		writer.Write([]byte("OK"))
+
+		go func() {
+			time.Sleep(time.Millisecond)
+			os.Exit(0)
+		}()
+
+	}else{
+		writer.WriteHeader(http.StatusForbidden)
+		writer.Write([]byte("Forbidden"))
+	}
 }
 
 func Ping(writer http.ResponseWriter, request *http.Request){
@@ -164,8 +197,7 @@ func (s storeHandler) ServeHTTP(writer http.ResponseWriter, request *http.Reques
 	}
 }
 
-// List TODO check problem with converting object to json
-//List list all books or given a isbn in path only the one that matches
+//List lists all books or given a isbn in path only the one that matches
 // Not sure if this method really need auth
 func (s storeHandler) List(writer http.ResponseWriter, request *http.Request, auth string) {
 	key := strings.TrimPrefix(request.URL.Path,ListPath)
@@ -179,6 +211,9 @@ func (s storeHandler) List(writer http.ResponseWriter, request *http.Request, au
 				books = append(books, ListInfo{
 					strconv.Itoa(v.ISBN),
 					v.Owner,
+					v.Writes,
+					v.Reads,
+					AgeMilli(v.Age),
 				})
 			//}
 		}
@@ -204,6 +239,9 @@ func (s storeHandler) List(writer http.ResponseWriter, request *http.Request, au
 			bookList := ListInfo{
 				strconv.Itoa(book.ISBN),
 				book.Owner,
+				book.Writes,
+				book.Reads,
+				AgeMilli(book.Age),
 			}
 			jsonData, err := json.Marshal(bookList)
 			if err != nil {
@@ -220,6 +258,7 @@ func (s storeHandler) List(writer http.ResponseWriter, request *http.Request, au
 	}
 }
 
+//TODO this age is in milliseconds and I/m having trouble converting types
 //Get given an isbn in path look for it and return full object
 func (s storeHandler) Get(writer http.ResponseWriter, request *http.Request, auth string) {
 	key := strings.TrimPrefix(request.URL.Path,StorePath)
@@ -234,6 +273,10 @@ func (s storeHandler) Get(writer http.ResponseWriter, request *http.Request, aut
 		return
 	}
 	if book.Owner==auth {
+		s.store.Lock()
+		book.Reads += book.Reads +1
+		book.Age = time.Now().String()
+		s.store.Unlock()
 		jsonData, err := json.Marshal(book)
 		if err != nil {
 			internalServerError(writer, request)
@@ -303,6 +346,9 @@ func (s storeHandler) CreateOrUpdate(writer http.ResponseWriter, request *http.R
 				b.Title,
 				b.Author,
 				b.Owner,
+				0,
+				0,
+				time.Now().String(),
 			}
 			s.store.books[string(b.ISBN)] = updateModel
 			s.store.Unlock()

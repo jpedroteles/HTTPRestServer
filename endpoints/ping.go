@@ -1,6 +1,7 @@
 package endpoints
 
 import (
+	"fmt"
 	"net/http"
 )
 
@@ -15,4 +16,8 @@ func Ping(writer http.ResponseWriter, request *http.Request) {
 		writer.WriteHeader(http.StatusNotFound)
 		writer.Write([]byte(`{"message": "not found"}`))
 	}
+}
+
+func Ping1(){
+	fmt.Println("ola")
 }
