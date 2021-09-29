@@ -25,9 +25,8 @@ const (
 
 var(
 	listBookRe   = regexp.MustCompile(`^\/list[\/]*$`)
-	listBooksRe    = regexp.MustCompile(`^\/list\/(\d+)$`)
-	StoreRe    = regexp.MustCompile(`^\/store\/(\d+)$`)
-	CreateBookRe   = regexp.MustCompile(`^\/store[\/]*$`)
+	listBooksRe    = regexp.MustCompile(`^\/list\/(.+)$`)
+	StoreRe    = regexp.MustCompile(`^\/store\/(.+)$`)
 )
 
 
@@ -35,11 +34,13 @@ var(
 // |TYPES|
 // ------
 
+type Request struct{
+	Value string `json:"-"`
+}
+
 //Book type definitions
 type Book struct {
-	ISBN   int    `json:"isbn"`
-	Title  string `json:"title"`
-	Author string `json:"author"`
+	Value  string `json:"-"`
 	Owner  string `json:"owner"`
 }
 
@@ -76,8 +77,8 @@ func SetUpData() *storeHandler {
 	book := &storeHandler{
 		store : &kvStore{
 			books:map[string]Book{
-				"1":{1,"Get Set Go!", "John Smith", "Test"},
-				"2":{2,"Be a Go Getter", "David Byrne", "David"},
+				"1":{"Get Set Go!",  "Test"},
+				"2":{"Be a Go Getter", "David"},
 			},
 			RWMutex: &sync.RWMutex{},
 		},
@@ -174,7 +175,7 @@ func (s storeHandler) ServeHTTP(writer http.ResponseWriter, request *http.Reques
 	case request.Method == http.MethodGet && StoreRe.MatchString(request.URL.Path):
 		s.Get(writer, request, auth)
 		return
-	case request.Method == http.MethodPut && CreateBookRe.MatchString(request.URL.Path):
+	case request.Method == http.MethodPut && StoreRe.MatchString(request.URL.Path):
 		s.CreateOrUpdate(writer, request, auth)
 		return
 	case request.Method == http.MethodDelete && StoreRe.MatchString(request.URL.Path):
@@ -195,10 +196,10 @@ func (s storeHandler) List(writer http.ResponseWriter, request *http.Request, au
 		//list all books
 		s.store.RLock()
 		books := make([]ListInfo, 0, len(s.store.books))
-		for _, v := range s.store.books {
+		for key, v := range s.store.books {
 			//if v.Owner == auth || auth == Admin{
 				books = append(books, ListInfo{
-					strconv.Itoa(v.ISBN),
+					key,
 					v.Owner,
 				})
 			//}
@@ -223,7 +224,7 @@ func (s storeHandler) List(writer http.ResponseWriter, request *http.Request, au
 		}
 		//if book.Owner == auth || auth == Admin{
 			bookList := ListInfo{
-				strconv.Itoa(book.ISBN),
+				key,
 				book.Owner,
 			}
 			jsonData, err := json.Marshal(bookList)
@@ -300,18 +301,23 @@ func (s storeHandler) Delete(writer http.ResponseWriter, request *http.Request, 
 //CreateOrUpdate creates entry if isbn doesn't already exist, if exists then updates entry
 func (s storeHandler) CreateOrUpdate(writer http.ResponseWriter, request *http.Request, auth string) {
 	var b Book
-	if err := json.NewDecoder(request.Body).Decode(&b); err != nil {
+	var r Request
+	key := strings.TrimPrefix(request.URL.Path,StorePath)
+	key = strings.TrimLeft(key,"/")
+	if err := json.NewDecoder(request.Body).Decode(&r); err != nil {
 		internalServerError(writer, request)
 		return
 	}
 	s.store.RLock()
-	_, ok := s.store.books[string(b.ISBN)]
+	_, ok := s.store.books[key]
 	s.store.RUnlock()
 	//ISBN doesn't exist so we create a new entry
 	if !ok{
 		//Creation part
 		s.store.Lock()
-		s.store.books[strconv.Itoa(b.ISBN)] = b
+		b.Value = r.Value
+		b.Owner = auth
+		s.store.books[key] = b
 		s.store.Unlock()
 		writer.WriteHeader(http.StatusOK)
 		writer.Write([]byte("Ok"))
@@ -320,12 +326,10 @@ func (s storeHandler) CreateOrUpdate(writer http.ResponseWriter, request *http.R
 		if b.Owner == auth || auth == Admin{
 			s.store.Lock()
 			updateModel := Book{
-				b.ISBN,
-				b.Title,
-				b.Author,
+				r.Value,
 				b.Owner,
 			}
-			s.store.books[string(b.ISBN)] = updateModel
+			s.store.books[b.Value] = updateModel
 			s.store.Unlock()
 			writer.WriteHeader(http.StatusOK)
 			writer.Write([]byte("Ok"))
