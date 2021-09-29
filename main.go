@@ -164,8 +164,7 @@ func (s storeHandler) ServeHTTP(writer http.ResponseWriter, request *http.Reques
 	}
 }
 
-// List TODO check problem with converting object to json
-//List list all books or given a isbn in path only the one that matches
+//List lists all books or given a isbn in path only the one that matches
 // Not sure if this method really need auth
 func (s storeHandler) List(writer http.ResponseWriter, request *http.Request, auth string) {
 	key := strings.TrimPrefix(request.URL.Path,ListPath)
