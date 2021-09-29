@@ -1,3 +1,2 @@
-
-app.log
+//Ignores logs files
 *.log
