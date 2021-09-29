@@ -18,7 +18,8 @@ const (
 	//Root     = "/api/"
 	StorePath = "/store/"
 	ListPath  ="/list"
-	pingPath  = "/ping"
+	ShutdownPath = "/shutdown"
+	PingPath  = "/ping"
 	Admin = "admin"
 )
 
@@ -95,13 +96,15 @@ func main(){
 		if f.Name == "port" {
 			_,err:= strconv.Atoi(f.Value.String())
 			if err != nil{
-				utils.AppErrorLogger.Println("Failure to parte to int ", err)
+				utils.AppErrorLogger.Println("Failure to parse to int ", err)
 				os.Exit(-1)
 			}
 		}
 	})
 
 	flag.Parse()
+
+	//server.SetUpServer()
 
 	utils.SetUpLogger()
 	utils.AppInfoLogger.Println("Starting up proj in port: "+ strconv.Itoa(port))
@@ -125,13 +128,32 @@ func main(){
 func SetUpServer() *http.ServeMux {
 	mux := http.NewServeMux()
 	data := SetUpData()
-	mux.HandleFunc(pingPath,Ping)
+	mux.HandleFunc(PingPath,Ping)
+	mux.HandleFunc(ShutdownPath, Shutdown)
 	mux.Handle(StorePath,data)
 	mux.Handle(strings.TrimRight(StorePath,"/"),data)
 	mux.Handle(ListPath,data)
 	mux.Handle(ListPath +"/", data)
 	//mux.Handle("",data)
 	return mux
+}
+
+func Shutdown(writer http.ResponseWriter, request *http.Request) {
+	utils.HTTPInfoLogger.Println(fmt.Sprintf("Date: %s,IP source: %s,HTTP method: %s,URL: %s", time.Now().Format("2006.01.02 15:04:05"),request.Header.Get("X-FORWARDED-FOR"),request.Method,request.URL))
+	auth := request.Header.Get("Authorization")
+	if auth == Admin{
+		writer.WriteHeader(http.StatusOK)
+		writer.Write([]byte("OK"))
+
+		go func() {
+			time.Sleep(time.Millisecond)
+			os.Exit(0)
+		}()
+
+	}else{
+		writer.WriteHeader(http.StatusForbidden)
+		writer.Write([]byte("Forbidden"))
+	}
 }
 
 func Ping(writer http.ResponseWriter, request *http.Request){
@@ -164,7 +186,7 @@ func (s storeHandler) ServeHTTP(writer http.ResponseWriter, request *http.Reques
 	}
 }
 
-//List lists all books or given a isbn in path only the one that matches
+//List lists all books or given an isbn in path only the one that matches
 // Not sure if this method really need auth
 func (s storeHandler) List(writer http.ResponseWriter, request *http.Request, auth string) {
 	key := strings.TrimPrefix(request.URL.Path,ListPath)
