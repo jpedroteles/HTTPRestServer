@@ -3,10 +3,9 @@ package constants
 const (
 
 	//Root     = "/api/"
-	StorePath = "/store/"
-	ListPath  ="/list"
+	StorePath    = "/store/"
+	ListPath     = "/list"
 	ShutdownPath = "/shutdown"
-	PingPath  = "/ping"
-	Admin = "admin"
+	PingPath     = "/ping"
+	Admin        = "admin"
 )
-

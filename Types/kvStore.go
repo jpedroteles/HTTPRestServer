@@ -2,13 +2,14 @@ package LocalTypes
 
 import "sync"
 
+type Request struct {
+	Value string `json:"-"`
+}
+
 //Book type definitions
 type Book struct {
-	Key    string `json:"key"`
-	ISBN   int    `json:"isbn"`
-	Title  string `json:"title"`
-	Author string `json:"author"`
-	Owner  string `json:"owner"`
+	Value string `json:"-"`
+	Owner string `json:"owner"`
 }
 
 //kvStore type definition. Mutex for lock/unlock when making operations on object
