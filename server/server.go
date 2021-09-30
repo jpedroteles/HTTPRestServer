@@ -11,14 +11,14 @@ import (
 	"strings"
 )
 
-func SetUpServer() *http.ServeMux{
+func SetUpServer() *http.ServeMux {
 	mux := http.NewServeMux()
 	data := utils.SetUpData()
-	mux.HandleFunc(constants.PingPath,endpoints.Ping)
+	mux.HandleFunc(constants.PingPath, endpoints.Ping)
 	mux.HandleFunc(constants.ShutdownPath, endpoints.Shutdown)
-	mux.Handle(constants.StorePath,data)
-	mux.Handle(strings.TrimRight(constants.StorePath,"/"),data)
-	mux.Handle(constants.ListPath,data)
+	mux.Handle(constants.StorePath, data)
+	mux.Handle(strings.TrimRight(constants.StorePath, "/"), data)
+	mux.Handle(constants.ListPath, data)
 	mux.Handle(constants.ListPath+"/", data)
 	return mux
 }
