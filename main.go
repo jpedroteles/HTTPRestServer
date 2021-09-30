@@ -13,6 +13,7 @@ func main() {
 	var (
 		port int
 	)
+
 	//Handling arguments
 	flag.IntVar(&port, "port", 8000, "port to listen on")
 
