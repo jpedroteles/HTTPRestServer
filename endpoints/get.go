@@ -5,6 +5,7 @@ import (
 	"Week2Proj/logger"
 	"net/http"
 	"strings"
+	"time"
 )
 
 //Get given an isbn in path look for it and return full object
@@ -21,10 +22,14 @@ func Get(writer http.ResponseWriter, request *http.Request, auth string, s *Stor
 		return
 	}
 	if book.Owner == auth {
+		s.Store.Lock()
+		book.Reads++
+		book.Age = time.Now()
+		s.Store.Books[key] = book
+		s.Store.Unlock()
 		writer.WriteHeader(http.StatusOK)
 		writer.Write([]byte(book.Value))
 	} else {
-		logger.AppErrorLogger.Println("forbiden", http.StatusForbidden)
 		writer.WriteHeader(http.StatusForbidden)
 		writer.Write([]byte("Forbidden"))
 	}

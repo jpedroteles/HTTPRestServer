@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"strings"
+	"time"
 )
 
 //List lists all books or given an isbn in path only the one that matches
@@ -23,6 +24,9 @@ func List(writer http.ResponseWriter, request *http.Request, auth string, s *Sto
 			books = append(books, LocalTypes.ListInfo{
 				Key:   key,
 				Owner: v.Owner,
+				Reads: v.Reads,
+				Writes: v.Writes,
+				Age:AgeMilli(v.Age),
 			})
 		}
 		jsonBytes, err := json.Marshal(books)
@@ -45,6 +49,9 @@ func List(writer http.ResponseWriter, request *http.Request, auth string, s *Sto
 		bookList := LocalTypes.ListInfo{
 			Key:   key,
 			Owner: book.Owner,
+			Reads: book.Reads,
+			Writes: book.Writes,
+			Age: AgeMilli(book.Age),
 		}
 		jsonData, err := json.Marshal(bookList)
 		if err != nil {
@@ -52,7 +59,12 @@ func List(writer http.ResponseWriter, request *http.Request, auth string, s *Sto
 			return
 		} else {
 			writer.WriteHeader(http.StatusOK)
-			writer.Write([]byte(jsonData))
+			writer.Write(jsonData)
 		}
 	}
+}
+
+func AgeMilli(age time.Time) int64 {
+	test := time.Now().Sub(age)
+	return test.Milliseconds()
 }

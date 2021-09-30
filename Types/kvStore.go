@@ -1,6 +1,9 @@
 package LocalTypes
 
-import "sync"
+import (
+	"sync"
+	"time"
+)
 
 type Request struct {
 	Value string `json:"-"`
@@ -10,9 +13,12 @@ type Request struct {
 type Book struct {
 	Value string `json:"-"`
 	Owner string `json:"owner"`
+	Writes int `json:"writes,omitempty"`
+	Reads int `json:"reads,omitempty"`
+	Age time.Time `json:"age,omitempty"`
 }
 
-//kvStore type definition. Mutex for lock/unlock when making operations on object
+//KvStore type definition. Mutex for lock/unlock when making operations on object
 type KvStore struct {
 	Books map[string]Book
 	*sync.RWMutex
