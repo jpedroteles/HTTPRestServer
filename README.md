@@ -359,4 +359,5 @@ provided to help ensure good coding practices.
 [golangci-lint]: https://github.com/golangci/golangci-lint
 
 
+## Disclaimer
 Exercise statement from a golang academy
