@@ -1,6 +1,7 @@
 package LocalTypes
 
 import (
+	"container/list"
 	"sync"
 	"time"
 )
@@ -20,6 +21,9 @@ type Book struct {
 
 //KvStore type definition. Mutex for lock/unlock when making operations on object
 type KvStore struct {
+	Depth int
 	Books map[string]Book
+	Order *list.List
+
 	*sync.RWMutex
 }

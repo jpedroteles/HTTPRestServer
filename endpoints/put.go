@@ -40,7 +40,6 @@ func CreateOrUpdate(writer http.ResponseWriter, request *http.Request, auth stri
 				Owner: toUpdate.Owner,
 				Writes: toUpdate.Writes+ 1,
 				Age: time.Now(),
-
 			}
 			s.Store.Books[key] = updateModel
 			s.Store.Unlock()

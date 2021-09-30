@@ -6,4 +6,5 @@ const (
 	ShutdownPath = "/shutdown"
 	PingPath     = "/ping"
 	Admin        = "admin"
+	DefaultDepth = 100
 )

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"Week2Proj/constants"
 	"Week2Proj/logger"
 	"Week2Proj/server"
 	"flag"
@@ -12,11 +13,12 @@ import (
 func main() {
 	var (
 		port int
+		depth int
 	)
 
 	//Handling arguments
 	flag.IntVar(&port, "port", 8000, "port to listen on")
-
+	flag.IntVar(&depth, "depth", 0, "LRU depth (zero for unbounded)")
 	flag.Visit(func(f *flag.Flag) {
 		if f.Name == "port" {
 			_, err := strconv.Atoi(f.Value.String())
@@ -25,11 +27,18 @@ func main() {
 				os.Exit(-1)
 			}
 		}
+		if f.Name == "depth" {
+			_, err := strconv.Atoi(f.Value.String())
+			if err != nil {
+				logger.AppErrorLogger.Println("Invalid depth value, default depth used(100)", err)
+				depth = constants.DefaultDepth
+			}
+		}
 	})
 
 	flag.Parse()
 
-	mux := server.SetUpServer()
+	mux := server.SetUpServer(depth)
 
 	logger.SetUpLogger()
 	logger.AppInfoLogger.Println("Starting up proj in port: " + strconv.Itoa(port))
