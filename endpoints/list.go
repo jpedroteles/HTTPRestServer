@@ -13,14 +13,14 @@ import (
 
 //List lists all books or given an isbn in path only the one that matches
 // Not sure if this method really need auth
-func (s LocalTypes.StoreHandler)List(writer http.ResponseWriter, request *http.Request, auth string){
+func List(writer http.ResponseWriter, request *http.Request, auth string, s *LocalTypes.StoreHandler){
 	key := strings.TrimPrefix(request.URL.Path,constants.ListPath)
 	key = strings.TrimLeft(key,"/")
 	if key ==""{
 		//list all books
 		s.Store.RLock()
-		books := make([]LocalTypes.ListInfo, 0, len(s.store.books))
-		for _, v := range s.store.books {
+		books := make([]LocalTypes.ListInfo, 0, len(s.Store.Books))
+		for _, v := range s.Store.Books {
 			//if v.Owner == auth || auth == Admin{
 			books = append(books, LocalTypes.ListInfo{
 				v.Key,
@@ -28,7 +28,7 @@ func (s LocalTypes.StoreHandler)List(writer http.ResponseWriter, request *http.R
 			})
 			//}
 		}
-		s.store.RUnlock()
+		s.Store.RUnlock()
 		jsonBytes, err := json.Marshal(books)
 		if err != nil {
 			internalServerError(writer, request)
@@ -37,9 +37,9 @@ func (s LocalTypes.StoreHandler)List(writer http.ResponseWriter, request *http.R
 		writer.WriteHeader(http.StatusOK)
 		writer.Write(jsonBytes)
 	}else{
-		s.store.RLock()
+		s.Store.RLock()
 		book, ok := s.Store.Books[key]
-		s.store.RUnlock()
+		s.Store.RUnlock()
 		if !ok{
 			utils.AppErrorLogger.Println("404 key not found")
 			msg := "404 key not found"

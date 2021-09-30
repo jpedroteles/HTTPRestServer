@@ -21,7 +21,7 @@ type StoreHandler struct {
 	Store *KvStore
 }
 
-func (s StoreHandler) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
+func (s *StoreHandler) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
 	writer.Header().Set("content-type", "application/json")
 	utils.HTTPInfoLogger.Println(fmt.Sprintf("Date: %s,IP source: %s,HTTP method: %s,URL: %s", time.Now().Format("2006.01.02 15:04:05"),request.Header.Get("X-FORWARDED-FOR"),request.Method,request.URL))
 	auth:=request.Header.Get("Authorization")
@@ -44,18 +44,18 @@ func (s StoreHandler) ServeHTTP(writer http.ResponseWriter, request *http.Reques
 	}
 }
 
-func (s StoreHandler)List(writer http.ResponseWriter, request *http.Request, auth string)  {
-	endpoints.List(writer, request, auth)
+func (s *StoreHandler)List(writer http.ResponseWriter, request *http.Request, auth string)  {
+	endpoints.List(writer, request, auth, s)
 }
 
-func (s StoreHandler) Get(writer http.ResponseWriter, request *http.Request, auth string) {
+func (s *StoreHandler) Get(writer http.ResponseWriter, request *http.Request, auth string) {
 	
 }
 
-func (s StoreHandler) CreateOrUpdate(writer http.ResponseWriter, request *http.Request, auth string) {
+func (s *StoreHandler) CreateOrUpdate(writer http.ResponseWriter, request *http.Request, auth string) {
 	
 }
 
-func (s StoreHandler) Delete(writer http.ResponseWriter, request *http.Request, auth string) {
+func (s *StoreHandler) Delete(writer http.ResponseWriter, request *http.Request, auth string) {
 	
 }
