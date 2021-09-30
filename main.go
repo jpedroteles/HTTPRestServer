@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"regexp"
@@ -77,8 +78,7 @@ func SetUpData() *storeHandler {
 	book := &storeHandler{
 		store : &kvStore{
 			books:map[string]Book{
-				"1":{"Get Set Go!",  "Test"},
-				"2":{"Be a Go Getter", "David"},
+
 			},
 			RWMutex: &sync.RWMutex{},
 		},
@@ -164,10 +164,11 @@ func Ping(writer http.ResponseWriter, request *http.Request){
 	writer.Write([]byte("pong"))
 }
 
-func (s storeHandler) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
-	writer.Header().Set("content-type", "application/json")
+func (s *storeHandler) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
+	writer.Header().Set("content-type", "text/plain; charset=utf-8")
 	utils.HTTPInfoLogger.Println(fmt.Sprintf("Date: %s,IP source: %s,HTTP method: %s,URL: %s", time.Now().Format("2006.01.02 15:04:05"),request.Header.Get("X-FORWARDED-FOR"),request.Method,request.URL))
 	auth:=request.Header.Get("Authorization")
+
 	switch {
 	case request.Method == http.MethodGet && listBookRe.MatchString(request.URL.Path) || listBooksRe.MatchString(request.URL.Path):
 		s.List(writer, request, auth)
@@ -189,12 +190,13 @@ func (s storeHandler) ServeHTTP(writer http.ResponseWriter, request *http.Reques
 
 //List lists all books or given an isbn in path only the one that matches
 // Not sure if this method really need auth
-func (s storeHandler) List(writer http.ResponseWriter, request *http.Request, auth string) {
+func (s *storeHandler) List(writer http.ResponseWriter, request *http.Request, auth string) {
 	key := strings.TrimPrefix(request.URL.Path,ListPath)
 	key = strings.TrimLeft(key,"/")
 	if key ==""{
 		//list all books
-		s.store.RLock()
+		s.store.Lock()
+		defer s.store.Unlock()
 		books := make([]ListInfo, 0, len(s.store.books))
 		for key, v := range s.store.books {
 			//if v.Owner == auth || auth == Admin{
@@ -204,7 +206,6 @@ func (s storeHandler) List(writer http.ResponseWriter, request *http.Request, au
 				})
 			//}
 		}
-		s.store.RUnlock()
 		jsonBytes, err := json.Marshal(books)
 		if err != nil {
 			internalServerError(writer, request)
@@ -213,9 +214,9 @@ func (s storeHandler) List(writer http.ResponseWriter, request *http.Request, au
 		writer.WriteHeader(http.StatusOK)
 		writer.Write(jsonBytes)
 	}else{
-		s.store.RLock()
+		s.store.Lock()
+		defer s.store.Unlock()
 		book, ok := s.store.books[key]
-		s.store.RUnlock()
 		if !ok{
 			utils.AppErrorLogger.Println("404 key not found")
 			msg := "404 key not found"
@@ -243,12 +244,12 @@ func (s storeHandler) List(writer http.ResponseWriter, request *http.Request, au
 }
 
 //Get given an isbn in path look for it and return full object
-func (s storeHandler) Get(writer http.ResponseWriter, request *http.Request, auth string) {
+func (s *storeHandler) Get(writer http.ResponseWriter, request *http.Request, auth string) {
 	key := strings.TrimPrefix(request.URL.Path,StorePath)
 	key = strings.TrimLeft(key,"/")
-	s.store.RLock()
+	s.store.Lock()
 	book, ok := s.store.books[key]
-	s.store.RUnlock()
+	s.store.Unlock()
 	if !ok{
 		utils.AppErrorLogger.Println("Book not found")
 		msg := "404 key not found"
@@ -256,15 +257,10 @@ func (s storeHandler) Get(writer http.ResponseWriter, request *http.Request, aut
 		return
 	}
 	if book.Owner==auth {
-		jsonData, err := json.Marshal(book)
-		if err != nil {
-			internalServerError(writer, request)
-			return
-		} else {
-			writer.WriteHeader(http.StatusOK)
-			writer.Write([]byte(jsonData))
-		}
+		writer.WriteHeader(http.StatusOK)
+		writer.Write([]byte(book.Value))
 	}else{
+		utils.AppErrorLogger.Println("forbiden",http.StatusForbidden)
 		writer.WriteHeader(http.StatusForbidden)
 		writer.Write([]byte("Forbidden"))
 	}
@@ -272,12 +268,12 @@ func (s storeHandler) Get(writer http.ResponseWriter, request *http.Request, aut
 }
 
 //Delete given an isbn in path looks for it and if exists deletes it
-func (s storeHandler) Delete(writer http.ResponseWriter, request *http.Request, auth string) {
+func (s *storeHandler) Delete(writer http.ResponseWriter, request *http.Request, auth string) {
 	key := strings.TrimPrefix(request.URL.Path,StorePath)
 	key = strings.TrimLeft(key,"/")
-	s.store.RLock()
+	s.store.Lock()
 	book, ok := s.store.books[key]
-	s.store.RUnlock()
+	s.store.Unlock()
 	if !ok{
 		utils.AppErrorLogger.Println("Book not found")
 		msg := "404 key not found"
@@ -299,23 +295,19 @@ func (s storeHandler) Delete(writer http.ResponseWriter, request *http.Request, 
 }
 
 //CreateOrUpdate creates entry if isbn doesn't already exist, if exists then updates entry
-func (s storeHandler) CreateOrUpdate(writer http.ResponseWriter, request *http.Request, auth string) {
+func (s *storeHandler) CreateOrUpdate(writer http.ResponseWriter, request *http.Request, auth string) {
 	var b Book
-	var r Request
 	key := strings.TrimPrefix(request.URL.Path,StorePath)
 	key = strings.TrimLeft(key,"/")
-	if err := json.NewDecoder(request.Body).Decode(&r); err != nil {
-		internalServerError(writer, request)
-		return
-	}
-	s.store.RLock()
-	_, ok := s.store.books[key]
-	s.store.RUnlock()
+	value, _ :=ioutil.ReadAll(request.Body)
+	s.store.Lock()
+	toUpdate, ok := s.store.books[key]
+	s.store.Unlock()
 	//ISBN doesn't exist so we create a new entry
 	if !ok{
 		//Creation part
 		s.store.Lock()
-		b.Value = r.Value
+		b.Value = string(value)
 		b.Owner = auth
 		s.store.books[key] = b
 		s.store.Unlock()
@@ -323,13 +315,13 @@ func (s storeHandler) CreateOrUpdate(writer http.ResponseWriter, request *http.R
 		writer.Write([]byte("Ok"))
 	}else{
 		//Isbn exists, so we update instead of creating a new one
-		if b.Owner == auth || auth == Admin{
+		if toUpdate.Owner == auth || auth == Admin{
 			s.store.Lock()
 			updateModel := Book{
-				r.Value,
-				b.Owner,
+				string(value),
+				toUpdate.Owner,
 			}
-			s.store.books[b.Value] = updateModel
+			s.store.books[key] = updateModel
 			s.store.Unlock()
 			writer.WriteHeader(http.StatusOK)
 			writer.Write([]byte("Ok"))
