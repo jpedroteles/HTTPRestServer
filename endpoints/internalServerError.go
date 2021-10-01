@@ -1,8 +1,12 @@
 package endpoints
 
-import "net/http"
+import (
+	"Week2Proj/logger"
+	"net/http"
+)
 
 func internalServerError(writer http.ResponseWriter, request *http.Request) {
+	logger.AppErrorLogger.Println("Internal error")
 	writer.WriteHeader(http.StatusInternalServerError)
-	writer.Write([]byte("internal server error"))
+	writer.Write([]byte(http.StatusText(http.StatusInternalServerError)))
 }

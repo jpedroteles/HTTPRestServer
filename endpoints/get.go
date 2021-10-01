@@ -10,6 +10,8 @@ import (
 
 //Get given an isbn in path look for it and return full object
 func Get(writer http.ResponseWriter, request *http.Request, auth string, s *StoreHandler) {
+	logger.AppInfoLogger.Println("Getting entry")
+	writer.Header().Set("content-type", "text/plain; charset=utf-8")
 	key := strings.TrimPrefix(request.URL.Path, constants.StorePath)
 	key = strings.TrimLeft(key, "/")
 	s.Store.Lock()
@@ -17,7 +19,7 @@ func Get(writer http.ResponseWriter, request *http.Request, auth string, s *Stor
 	s.Store.Unlock()
 	if !ok {
 		logger.AppErrorLogger.Println("Book not found")
-		msg := "404 key not found"
+		msg := http.StatusText(http.StatusNotFound)
 		http.Error(writer, msg, http.StatusNotFound)
 		return
 	}
@@ -31,7 +33,7 @@ func Get(writer http.ResponseWriter, request *http.Request, auth string, s *Stor
 		writer.Write([]byte(book.Value))
 	} else {
 		writer.WriteHeader(http.StatusForbidden)
-		writer.Write([]byte("Forbidden"))
+		writer.Write([]byte(http.StatusText(http.StatusForbidden)))
 	}
 
 }
