@@ -1,8 +1,7 @@
 package endpoints
 
 import (
-	"Week2Proj/Types"
-	"Week2Proj/Utils"
+	LocalTypes "Week2Proj/Types"
 	"Week2Proj/logger"
 	"fmt"
 	"net/http"
@@ -25,16 +24,14 @@ func (s *StoreHandler) ServeHTTP(writer http.ResponseWriter, request *http.Reque
 	logger.HTTPInfoLogger.Println(fmt.Sprintf("Date: %s,IP source: %s,HTTP method: %s,URL: %s", time.Now().Format("2006.01.02 15:04:05"), request.Header.Get("X-FORWARDED-FOR"), request.Method, request.URL))
 	auth := request.Header.Get("Authorization")
 
-	token,err:=Utils.UnloadJWTPayload(request)
-	if err != nil{
+/*	token, err := Utils.UnloadJWTPayload(request)
+	if err != nil {
 		logger.AppErrorLogger.Println("Unexpected error unloading jwt Payload")
 		internalServerError(writer, request)
 		return
 	}
 	fmt.Println(token)
-
-
-
+*/
 	switch {
 	case request.Method == http.MethodGet && listBookRe.MatchString(request.URL.Path) || listBooksRe.MatchString(request.URL.Path):
 		s.List(writer, request, auth)

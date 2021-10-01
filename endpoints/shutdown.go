@@ -15,7 +15,7 @@ func Shutdown(writer http.ResponseWriter, request *http.Request) {
 	auth := request.Header.Get("Authorization")
 	if auth == constants.Admin {
 		writer.WriteHeader(http.StatusOK)
-		writer.Write([]byte("OK"))
+		writer.Write([]byte(http.StatusText(http.StatusOK)))
 
 		go func() {
 			time.Sleep(time.Millisecond)
@@ -24,6 +24,6 @@ func Shutdown(writer http.ResponseWriter, request *http.Request) {
 
 	} else {
 		writer.WriteHeader(http.StatusForbidden)
-		writer.Write([]byte("Forbidden"))
+		writer.Write([]byte(http.StatusText(http.StatusForbidden)))
 	}
 }

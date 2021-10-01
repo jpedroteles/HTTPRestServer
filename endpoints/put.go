@@ -3,6 +3,7 @@ package endpoints
 import (
 	LocalTypes "Week2Proj/Types"
 	"Week2Proj/constants"
+	"Week2Proj/logger"
 	"io/ioutil"
 	"net/http"
 	"strings"
@@ -11,6 +12,7 @@ import (
 
 //CreateOrUpdate creates entry if isbn doesn't already exist, if exists then updates entry
 func CreateOrUpdate(writer http.ResponseWriter, request *http.Request, auth string, s *StoreHandler) {
+	logger.AppInfoLogger.Println("Putting entry")
 	writer.Header().Set("content-type", "text/plain; charset=utf-8")
 	key := strings.TrimPrefix(request.URL.Path, constants.StorePath)
 	key = strings.TrimLeft(key, "/")
@@ -31,7 +33,7 @@ func CreateOrUpdate(writer http.ResponseWriter, request *http.Request, auth stri
 		s.Store.Books[key] = b
 		s.Store.Unlock()
 		writer.WriteHeader(http.StatusOK)
-		writer.Write([]byte("Ok"))
+		writer.Write([]byte(http.StatusText(http.StatusOK)))
 	} else {
 		//Isbn exists, so we update instead of creating a new one
 		if toUpdate.Owner == auth || auth == constants.Admin {
@@ -45,10 +47,10 @@ func CreateOrUpdate(writer http.ResponseWriter, request *http.Request, auth stri
 			s.Store.Books[key] = updateModel
 			s.Store.Unlock()
 			writer.WriteHeader(http.StatusOK)
-			writer.Write([]byte("Ok"))
+			writer.Write([]byte(http.StatusText(http.StatusOK)))
 		} else {
 			writer.WriteHeader(http.StatusForbidden)
-			writer.Write([]byte("Forbidden"))
+			writer.Write([]byte(http.StatusText(http.StatusForbidden)))
 		}
 
 	}

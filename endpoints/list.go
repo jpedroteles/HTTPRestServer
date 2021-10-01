@@ -1,7 +1,7 @@
 package endpoints
 
 import (
-	"Week2Proj/Types"
+	LocalTypes "Week2Proj/Types"
 	"Week2Proj/constants"
 	"Week2Proj/logger"
 	"encoding/json"
@@ -12,7 +12,8 @@ import (
 
 //List lists all books or given an isbn in path only the one that matches
 // Not sure if this method really need auth
-func List(writer http.ResponseWriter, request *http.Request, auth string, s *StoreHandler) {
+func List(writer http.ResponseWriter, request *http.Request, _ string, s *StoreHandler) {
+	logger.AppInfoLogger.Println("List entries")
 	writer.Header().Set("content-type", "application/json")
 	key := strings.TrimPrefix(request.URL.Path, constants.ListPath)
 	key = strings.TrimLeft(key, "/")

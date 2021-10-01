@@ -9,6 +9,7 @@ import (
 
 //Delete given an isbn in path looks for it and if exists deletes it
 func Delete(writer http.ResponseWriter, request *http.Request, auth string, s *StoreHandler) {
+	logger.AppInfoLogger.Println("Deleting entry")
 	writer.Header().Set("content-type", "text/plain; charset=utf-8")
 	key := strings.TrimPrefix(request.URL.Path, constants.StorePath)
 	key = strings.TrimLeft(key, "/")
