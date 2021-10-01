@@ -10,6 +10,7 @@ import (
 
 //Get given an isbn in path look for it and return full object
 func Get(writer http.ResponseWriter, request *http.Request, auth string, s *StoreHandler) {
+	writer.Header().Set("content-type", "text/plain; charset=utf-8")
 	key := strings.TrimPrefix(request.URL.Path, constants.StorePath)
 	key = strings.TrimLeft(key, "/")
 	s.Store.Lock()

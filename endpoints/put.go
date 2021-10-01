@@ -11,6 +11,7 @@ import (
 
 //CreateOrUpdate creates entry if isbn doesn't already exist, if exists then updates entry
 func CreateOrUpdate(writer http.ResponseWriter, request *http.Request, auth string, s *StoreHandler) {
+	writer.Header().Set("content-type", "text/plain; charset=utf-8")
 	key := strings.TrimPrefix(request.URL.Path, constants.StorePath)
 	key = strings.TrimLeft(key, "/")
 	value, _ := ioutil.ReadAll(request.Body)
@@ -20,11 +21,11 @@ func CreateOrUpdate(writer http.ResponseWriter, request *http.Request, auth stri
 	//ISBN doesn't exist so we create a new entry
 	if !ok {
 		//Creation part
-		b:=LocalTypes.Book{
-			Value: string(value),
-			Owner: auth,
+		b := LocalTypes.Book{
+			Value:  string(value),
+			Owner:  auth,
 			Writes: 1,
-			Age: time.Now(),
+			Age:    time.Now(),
 		}
 		s.Store.Lock()
 		s.Store.Books[key] = b
@@ -36,11 +37,10 @@ func CreateOrUpdate(writer http.ResponseWriter, request *http.Request, auth stri
 		if toUpdate.Owner == auth || auth == constants.Admin {
 			s.Store.Lock()
 			updateModel := LocalTypes.Book{
-				Value: string(value),
-				Owner: toUpdate.Owner,
-				Writes: toUpdate.Writes+ 1,
-				Age: time.Now(),
-
+				Value:  string(value),
+				Owner:  toUpdate.Owner,
+				Writes: toUpdate.Writes + 1,
+				Age:    time.Now(),
 			}
 			s.Store.Books[key] = updateModel
 			s.Store.Unlock()

@@ -14,6 +14,7 @@ func SetUpServer() *http.ServeMux {
 	data := SetUpData()
 	mux.HandleFunc(constants.PingPath, endpoints.Ping)
 	mux.HandleFunc(constants.ShutdownPath, endpoints.Shutdown)
+	mux.HandleFunc(constants.Login, endpoints.Login)
 	mux.Handle(constants.StorePath, data)
 	mux.Handle(strings.TrimRight(constants.StorePath, "/"), data)
 	mux.Handle(constants.ListPath, data)

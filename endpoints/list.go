@@ -13,6 +13,7 @@ import (
 //List lists all books or given an isbn in path only the one that matches
 // Not sure if this method really need auth
 func List(writer http.ResponseWriter, request *http.Request, auth string, s *StoreHandler) {
+	writer.Header().Set("content-type", "application/json")
 	key := strings.TrimPrefix(request.URL.Path, constants.ListPath)
 	key = strings.TrimLeft(key, "/")
 	if key == "" {
@@ -22,11 +23,11 @@ func List(writer http.ResponseWriter, request *http.Request, auth string, s *Sto
 		books := make([]LocalTypes.ListInfo, 0, len(s.Store.Books))
 		for key, v := range s.Store.Books {
 			books = append(books, LocalTypes.ListInfo{
-				Key:   key,
-				Owner: v.Owner,
-				Reads: v.Reads,
+				Key:    key,
+				Owner:  v.Owner,
+				Reads:  v.Reads,
 				Writes: v.Writes,
-				Age:AgeMilli(v.Age),
+				Age:    AgeMilli(v.Age),
 			})
 		}
 		jsonBytes, err := json.Marshal(books)
@@ -47,11 +48,11 @@ func List(writer http.ResponseWriter, request *http.Request, auth string, s *Sto
 			return
 		}
 		bookList := LocalTypes.ListInfo{
-			Key:   key,
-			Owner: book.Owner,
-			Reads: book.Reads,
+			Key:    key,
+			Owner:  book.Owner,
+			Reads:  book.Reads,
 			Writes: book.Writes,
-			Age: AgeMilli(book.Age),
+			Age:    AgeMilli(book.Age),
 		}
 		jsonData, err := json.Marshal(bookList)
 		if err != nil {
