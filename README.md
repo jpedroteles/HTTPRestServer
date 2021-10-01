@@ -1,12 +1,10 @@
 # HTTP REST Server
 
-
 ## Core Requirements
 
 An HTTP Rest server that will act as an in memory key value store. Users can
-`PUT` values into, and `DELETE` values from the store _provided_ no other users
-is using that key. Users can `GET` values from the store regardless of who
-created the value.
+`PUT` values into, and `DELETE` values from the store _provided_ no other users is using that key. Users can `GET`
+values from the store regardless of who created the value.
 
 The key/value store _must_ be thread safe.
 
@@ -21,13 +19,12 @@ The store will be started with the command:
 ./store --port <port>
 ```
 
-Where `<port>` will be the port to bind to. Failure to parse the `<port>` should
-yield an exit code `-1`. Failure to bind to the `<port>` should yield and exit
-code `-2`.
+Where `<port>` will be the port to bind to. Failure to parse the `<port>` should yield an exit code `-1`. Failure to
+bind to the `<port>` should yield and exit code `-2`.
 
 ### Logging
 
-The application should log all requests to a logfile (e.g. htaccess.log) 
+The application should log all requests to a logfile (e.g. htaccess.log)
 showing:
 
 * The time of the request
@@ -35,13 +32,11 @@ showing:
 * The HTTP method
 * The URL
 
-The application should log all other information to a separate logfile (e.g.
-store.log).
+The application should log all other information to a separate logfile (e.g. store.log).
 
 ### Ping
 
-Respond to a `ping` request with a `pong`. The `/ping` endpoint is a simple way
-of ensuring the server is running.
+Respond to a `ping` request with a `pong`. The `/ping` endpoint is a simple way of ensuring the server is running.
 
 #### Request
 
@@ -233,17 +228,14 @@ Forbidden
 
 ## Advanced Requirements
 
-The following requirements are stretch goals. While they do not have to be
-completed for the course it is strongly advised you at least attempt them to
-get an idea of the concepts they are testing.
-
+The following requirements are stretch goals. While they do not have to be completed for the course it is strongly
+advised you at least attempt them to get an idea of the concepts they are testing.
 
 ### Login
 
 > Capability: `login`
 
-Allow a user to log into the system. Login will return a Bearer token for
-authentication on future requests.
+Allow a user to log into the system. Login will return a Bearer token for authentication on future requests.
 
 ```http request
 GET /login
@@ -268,9 +260,8 @@ Content-Type: text/plain; charset=utf-8
 Unauthorized
 ```
 
-All requests that take an authorisation header will now expect the bearer token
-and the username will be retrieved from that. Invalid bearer tokens will
-result in:
+All requests that take an authorisation header will now expect the bearer token and the username will be retrieved from
+that. Invalid bearer tokens will result in:
 
 ```http request
 401 Unauthorized
@@ -311,16 +302,14 @@ The server should allow for the following users:
 
 > Capability: `override`
 
-Allow the admin user to `PUT` and `DELETE` keys they do not own. `PUT` will not
-change the ownership if the key already exists, it will simply overwrite the
-value.
+Allow the admin user to `PUT` and `DELETE` keys they do not own. `PUT` will not change the ownership if the key already
+exists, it will simply overwrite the value.
 
 ### LRU Store
 
 > Capability: `lru`
 
-Constrain the size of the store and make it Least Recently Used (LRU) for
-key eviction.
+Constrain the size of the store and make it Least Recently Used (LRU) for key eviction.
 
 Startup will have a new flag:
 
@@ -328,10 +317,9 @@ Startup will have a new flag:
 ./store --port <port> --depth <depth>
 ```
 
-`<depth>` will be the number of keys the store can retain. If the store is
-full when a `PUT` is made then the key that was least recently used will be
-evicted _regardless of owner_. A key is considered used if it is written,
-via `PUT`, or read via `GET`.
+`<depth>` will be the number of keys the store can retain. If the store is full when a `PUT` is made then the key that
+was least recently used will be evicted _regardless of owner_. A key is considered used if it is written, via `PUT`, or
+read via `GET`.
 
 ### Enhanced List
 
@@ -349,15 +337,13 @@ Update `/list` and `/list/<key>` to return the following for each key:
 }
 ```
 
-
 ## Review
 
-Code will be reviewed to ensure requirements not covered by the test
-harness are met. A template `.golangci.yml` file for [golangci-lint][] is
-provided to help ensure good coding practices.
+Code will be reviewed to ensure requirements not covered by the test harness are met. A template `.golangci.yml` file
+for [golangci-lint][] is provided to help ensure good coding practices.
 
 [golangci-lint]: https://github.com/golangci/golangci-lint
 
-
 ## Disclaimer
+
 Exercise statement from a golang academy

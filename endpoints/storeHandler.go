@@ -21,7 +21,7 @@ type StoreHandler struct {
 }
 
 func (s *StoreHandler) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
-	writer.Header().Set("content-type", "application/json")
+
 	logger.HTTPInfoLogger.Println(fmt.Sprintf("Date: %s,IP source: %s,HTTP method: %s,URL: %s", time.Now().Format("2006.01.02 15:04:05"), request.Header.Get("X-FORWARDED-FOR"), request.Method, request.URL))
 	auth := request.Header.Get("Authorization")
 	switch {
